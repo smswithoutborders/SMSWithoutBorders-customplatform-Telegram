@@ -27,25 +27,28 @@ class Users(TelegramApp):
 
 if __name__ == "__main__":
     
-    password, code = None, None
+    phone, password, code = None, None, None
+
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--code":
-            code = sys.argv[2]
-        elif sys.argv[1] == "--password":
-            password = sys.argv[2]
+        phone = sys.argv[1]
 
-    phone='2029932594:AAHcibAA874xpShFjegSvwiZqo2t-3iwdWY'
-    phone='+237652156811'
-    users = Users(phone = phone)
+        if len(sys.argv) > 3:
+            if sys.argv[2] == "--code":
+                code = sys.argv[3]
 
-    if not password and not code:
-        if users.is_logged_in():
-            print("* User is logged in...")
-            users.start()
+            elif sys.argv[2] == "--password":
+                password = sys.argv[3]
+
+
+        users = Users(phone = phone)
+        if not password and not code:
+            if users.is_logged_in():
+                print("* User is logged in...")
+                users.start()
+            else:
+                print("* User is not logged in...")
+                users._login()
         else:
-            print("* User is not logged in...")
-            users._login()
-    else:
-        print("* Attempting to use code...")
-        users.wait_login(password if password else code)
-        users.idle()
+            print("* Attempting to use code...")
+            users.wait_login(password if password else code)
+            users.idle()
