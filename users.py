@@ -2,7 +2,9 @@
 
 
 from telegram_app import TelegramApp
+from telegram.client import AuthorizationState
 import sys
+import traceback
 
 class Users(TelegramApp):
     def __init__(self, phone):
@@ -11,23 +13,21 @@ class Users(TelegramApp):
 
 
     def start(self):
-        self.login()
+        self.get_state()
         self.idle()
 
-    def _login(self):
-        self.login()
-
     def is_logged_in(self):
-        state = self.login()
+        state = self.get_state()
         print('* State:', state)
-        if state == 'ready':
+        if state == AuthorizationState.READY:
             return True
-        elif state == 'waiting code' or state == 'waiting password':
-            return False
+        elif state == AuthorizationState.WAIT_PASSWORD or \
+                state == AuthorizationState.WAIT_CODE:
+                    return False
 
 if __name__ == "__main__":
     
-    phone, password, code = None, None, None
+    phone, password, code, first_name, last_name = None, None, None, None, None
 
     if len(sys.argv) > 1:
         phone = sys.argv[1]
@@ -39,16 +39,33 @@ if __name__ == "__main__":
             elif sys.argv[2] == "--password":
                 password = sys.argv[3]
 
+            elif sys.argv[2] == "--register":
+                first_name, last_name = sys.argv[3], sys.argv[4]
+
 
         users = Users(phone = phone)
-        if not password and not code:
+
+        if first_name and last_name:
+            print("+ Registrating user", first_name, last_name)
+            try:
+                users.register(first_name, last_name)
+            except Exception as error:
+                # raise error
+                print(traceback.format_exc())
+
+        elif password or code:
+            print("* Attempting to use code...")
+            try:
+                if users.waitget_state(password if password else code) == \
+                        AuthorizationState.WAIT_REGISTRATION:
+                            print("* First and last name required")
+            except Exception as error:
+                print("* Invalid code" if error.args[0] == 'PHONE_CODE_INVALID' else error)
+
+        else:
             if users.is_logged_in():
                 print("* User is logged in...")
                 users.start()
             else:
                 print("* User is not logged in...")
-                users._login()
-        else:
-            print("* Attempting to use code...")
-            users.wait_login(password if password else code)
-            users.idle()
+                users.get_state()
