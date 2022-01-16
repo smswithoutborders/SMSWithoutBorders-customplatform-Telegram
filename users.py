@@ -56,11 +56,11 @@ if __name__ == "__main__":
         elif password or code:
             print("* Attempting to use code...")
             try:
-                if users.waitget_state(password if password else code) == \
+                if users.wait_login(password if password else code) == \
                         AuthorizationState.WAIT_REGISTRATION:
                             print("* First and last name required")
             except Exception as error:
-                print("* Invalid code" if error.args[0] == 'PHONE_CODE_INVALID' else error)
+                print("* Invalid code" if error.args[0] == 'PHONE_CODE_INVALID' else traceback.format_exc())
 
         else:
             if users.is_logged_in():
