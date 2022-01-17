@@ -7,26 +7,6 @@ import configparser
 # https://github.com/alexander-akhmetov/python-telegram/blob/a5c06855aed41ff1503c7949ccb5fe725374fa20/telegram/tdjson.py#L1
 # https://python-telegram.readthedocs.io/en/0.14.0/tdlib.html
 
-'''
-api flow:
-    - how to uniquely identify user?
-        - phone numbers are md5 hashed and dirs are created for them 
-            default = (/tmp/.tdlib_files/)
-    - request for code
-        - how to know which platform the code has been sent to?
-    - authenticate code
-
-    + look for mechanism that checks if user is signing up or login-in
-        - if sign up: 
-            - code comes via SMS 
-                - (maybe should not support creating an account)
-                - (maybe does not support creating an account)
-        - if login:
-            - code comes via other Telegram account
-
-    + how to temporaly test login without creating too many accounts?
-'''
-
 class TelegramApp:
     def __init__(self, phone):
         self.phone = phone
@@ -52,7 +32,6 @@ class TelegramApp:
             self.login_state = self.tg.login(blocking=blocking)
 
         if self.login_state == AuthorizationState.WAIT_REGISTRATION:
-            print('* Registration required')
             return self.tg.register_user(first=first_name, last=last_name)
         else:
             raise Exception('STATE_IS_NOT_REGISTRATION')
