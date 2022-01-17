@@ -10,8 +10,9 @@
 	"phonenumber":"[country_code][number]"
 }
 ```
-> * If the user already has an active session, a `200` is sent back.
-> * If the user does not have an active session a `100` is sent back and a code is sent either to their Telegram App or via SMS. You should request and provide this code to finish the start session process. See [Provide Code](#provide_code)
+> * If the user already has an active session, a `200` is sent back
+> * If the user does not have an active session a `100` is sent back and a code is sent either to their Telegram App or via SMS. 
+> You should request and provide this code to finish the start session process. See [Provide Code](#provide_code)
 
 <a name="provide_code"></a>
 ###### Provide the sent session code
@@ -24,6 +25,7 @@
 ```
 > * If the user does not have a Telegram account a `101` is sent back. See [Register user](#register_user)
 > * If the code is wrong a `403` is sent back.
+> * If the code is correct a `200` is sent back and an `md5` hash of the phone number
 
 <a name="register_user"></a>
 ###### Register user
