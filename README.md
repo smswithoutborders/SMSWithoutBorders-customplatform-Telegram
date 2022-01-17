@@ -5,25 +5,20 @@
 > If the user has not joined previously, they will be sent a code to an active Telegram session or SMS
 > This code should be requested for and sent to the backend to finish the joining  process
 
+Join SWoB Telegram App: `POST /join`
 ```json
-POST /join
-body:
 {
 	"phonenumber":"[country_code][number]"
 }
 ```
 
-response:
-```html
-100 - awaiting code from user
-400 - user is not registered (they can be registered, see endpoing below)
-200 - user already present
-```
+_response status code_
+Awaiting code from user - `100`
+User is not registered (they can be registered, see endpoing below) - `101`
+User already present - `200`
 
-- User has not joined Telegram before
+Register for new Telegram account `POST /register`
 ```json
-POST /register
-body:
 {
 	"phonenumber":"[country_code][number]",
 	"first_name":"",
@@ -31,8 +26,7 @@ body:
 }
 ```
 
-response:
-```html
-400 - failed to create user
-200 - user created successfully
+_response status code_
+Failed to create user - `400`
+User created successfully - `200`
 ```
