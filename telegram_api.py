@@ -15,7 +15,7 @@ CORS(app)
 
 @app.route('/', methods=['POST'])
 def start_session():
-    log.debug("starting new session for user")
+    logging.debug("starting new session for user")
     data = None
 
     try:
@@ -23,13 +23,14 @@ def start_session():
     except Exception as error:
         return 'invalid json', 400
 
-    if not hasattr(data, 'phonenumber'):
-        return 'phonenumber missing', 400
+    if not 'phonenumber' in data:
+        return 'phone number missing', 400
 
     number = data['phonenumber']
     try:
         user = Users(number)
         user_state = user.get_state()
+        logging.info("%s", user_state)
         if user_state == AuthorizationState.READY:
             return '', 200
 
@@ -38,13 +39,14 @@ def start_session():
 
     except Exception as error:
         logging.exception(error)
+    finally:
+        user.stop()
 
     return '', 400
 
 
 @app.route('/', methods=['PUT'])
 def wait_code():
-    logging.debug("getting code for user %s", number)
     data=None
 
     try:
@@ -53,57 +55,69 @@ def wait_code():
         return 'invalid json', 400
 
     password = None
-    if not hasattr(data, 'code'):
+    if not 'code' in data:
         return 'code missing', 400
 
-    if not hasattr(data, 'phonenumber'):
-        return 'phonenumer missing', 400
+    if not 'phonenumber' in data:
+        return 'phone number missing', 400
 
     code = data['code']
-    number = data['number']
+    number = data['phonenumber']
+    logging.debug("getting code for user %s", number)
 
     try:
         user = Users(number)
         user_state = user.get_state()
         if user_state == AuthorizationState.WAIT_CODE:
+            logging.info("User code awaits...")
             try:
-                if user.wait_login(password if password else code) == \
-                        AuthorizationState.WAIT_REGISTRATION:
-                            return '', 101
+                user_state = user.wait_login(password if password else code)
+
+                if user_state == AuthorizationState.WAIT_REGISTRATION: 
+                    return '', 101
+
+                elif user_state == AuthorizationState.READY:
+                    return '', 200
 
             except Exception as error:
                 logging.exception(error)
 
                 if error.args[0] == 'PHONE_CODE_INVALID':
                     return '', 403
+
+                raise error
                 
+        if user_state == AuthorizationState.READY:
+            return '', 200
     except Exception as error:
         logging.exception(error)
+    finally:
+        user.stop()
 
     return '', 400
 
 
 @app.route('/users', methods=['POST'])
 def register_account():
-    logging.debug("registering a new user %s", number)
 
     try:
         data = request.json
     except Exception as error:
         return 'invalid json', 400
 
-    if not hasattr(data, 'first_name'):
+    if not 'first_name' in data:
         return 'first_name missing', 400
 
-    if not hasattr(data, 'last_name'):
+    if not 'last_name' in data:
         return 'last_name missing', 400
 
-    if not hasattr(data, 'phonenumber'):
-        return 'phonenumber missing', 400
+    if not 'phonenumber' in data:
+        return 'phone number missing', 400
 
     first_name = data['first_name']
     last_name = data['last_name']
     number = data['phonenumber']
+    logging.debug("registering a new user %s", number)
 
     try:
         user = Users(number)
@@ -119,7 +133,7 @@ def register_account():
 
 if __name__ == "__main__":
 
-    debug=False
+    debug = True
     parser = argparse.ArgumentParser(description='Process some integers.')
 
     parser.add_argument(
