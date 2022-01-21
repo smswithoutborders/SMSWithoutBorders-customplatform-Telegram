@@ -27,8 +27,8 @@ def start_session():
         return 'phone number missing', 400
 
     number = data['phonenumber']
+    user = Users(number)
     try:
-        user = Users(number)
         user_state = user.get_state()
         logging.info("%s", user_state)
         if user_state == AuthorizationState.READY:
@@ -65,8 +65,8 @@ def wait_code():
     number = data['phonenumber']
     logging.debug("getting code for user %s", number)
 
+    user = Users(number)
     try:
-        user = Users(number)
         user_state = user.get_state()
         if user_state == AuthorizationState.WAIT_CODE:
             logging.info("User code awaits...")
