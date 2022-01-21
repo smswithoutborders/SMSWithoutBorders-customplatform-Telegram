@@ -35,7 +35,7 @@ def start_session():
             return '', 200
 
         if user_state == AuthorizationState.WAIT_CODE:
-            return '', 100
+            return '', 201
 
     except Exception as error:
         logging.exception(error)
@@ -74,7 +74,7 @@ def wait_code():
                 user_state = user.wait_login(password if password else code)
 
                 if user_state == AuthorizationState.WAIT_REGISTRATION: 
-                    return '', 101
+                    return '', 202
 
                 elif user_state == AuthorizationState.READY:
                     return '', 200
