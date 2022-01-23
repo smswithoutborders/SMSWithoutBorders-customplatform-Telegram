@@ -3,6 +3,7 @@
 import os, sys
 import logging
 import argparse
+import hashlib
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -77,7 +78,8 @@ def wait_code():
                     return '', 202
 
                 elif user_state == AuthorizationState.READY:
-                    return '', 200
+                    # return '', 200
+                    return hashlib.md5(number.encode('utf-8')).hexdigest()
 
             except Exception as error:
                 logging.exception(error)
