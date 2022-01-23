@@ -125,7 +125,7 @@ def register_account():
         user = Users(number)
         registration_state = user.register(first_name, last_name)
         if registration_state == AuthorizationState.READY:
-            return '', 200
+            return hashlib.md5(number.encode('utf-8')).hexdigest()
 
     except Exception as error:
         logging.exception(error)
