@@ -38,3 +38,15 @@
 	"last_name":""
 }
 ```
+> * Returns `200` if successful and `500` for any error
+
+<a name="delete_user"></a>
+###### Delete user
+- Deleting the record of a user stored on local server. (Does not delete user from Telegram global server)
+> `DELETE /users`
+```json
+{
+	"phonenumber_hashed":"[MD5 Hashed phone number]",
+}
+```
+> * Returns `200` if successful and `500` for any error

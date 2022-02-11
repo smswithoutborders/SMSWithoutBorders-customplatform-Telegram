@@ -7,10 +7,9 @@ import sys
 import traceback
 
 class Users(TelegramApp):
-    def __init__(self, phone):
+    def __init__(self, phone:str) -> None:
         super().__init__(phone)
         self.phone = phone
-
 
     def start(self):
         self.get_state()

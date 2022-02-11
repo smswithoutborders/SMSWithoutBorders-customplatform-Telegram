@@ -23,27 +23,27 @@ def start_session():
         data = request.json
     except Exception as error:
         return 'invalid json', 400
+    else:
+        if not 'phonenumber' in data:
+            return 'phone number missing', 400
 
-    if not 'phonenumber' in data:
-        return 'phone number missing', 400
+        number = data['phonenumber']
+        user = Users(number)
+        try:
+            user_state = user.get_state()
+            logging.info("%s", user_state)
+            if user_state == AuthorizationState.READY:
+                return '', 200
 
-    number = data['phonenumber']
-    user = Users(number)
-    try:
-        user_state = user.get_state()
-        logging.info("%s", user_state)
-        if user_state == AuthorizationState.READY:
-            return '', 200
+            if user_state == AuthorizationState.WAIT_CODE:
+                return '', 201
 
-        if user_state == AuthorizationState.WAIT_CODE:
-            return '', 201
+        except Exception as error:
+            logging.exception(error)
+        finally:
+            user.stop()
 
-    except Exception as error:
-        logging.exception(error)
-    finally:
-        user.stop()
-
-    return '', 400
+        return '', 400
 
 
 @app.route('/', methods=['PUT'])
@@ -54,81 +54,106 @@ def wait_code():
         data = request.json
     except Exception as error:
         return 'invalid json', 400
+    else:
+        password = None
+        if not 'code' in data:
+            return 'code missing', 400
 
-    password = None
-    if not 'code' in data:
-        return 'code missing', 400
+        if not 'phonenumber' in data:
+            return 'phone number missing', 400
 
-    if not 'phonenumber' in data:
-        return 'phone number missing', 400
+        code = data['code']
+        number = data['phonenumber']
+        logging.debug("getting code for user %s", number)
 
-    code = data['code']
-    number = data['phonenumber']
-    logging.debug("getting code for user %s", number)
+        user = Users(number)
+        try:
+            user_state = user.get_state()
+            if user_state == AuthorizationState.WAIT_CODE:
+                logging.info("User code awaits...")
+                try:
+                    user_state = user.wait_login(password if password else code)
 
-    user = Users(number)
-    try:
-        user_state = user.get_state()
-        if user_state == AuthorizationState.WAIT_CODE:
-            logging.info("User code awaits...")
-            try:
-                user_state = user.wait_login(password if password else code)
+                    if user_state == AuthorizationState.WAIT_REGISTRATION: 
+                        return '', 202
 
-                if user_state == AuthorizationState.WAIT_REGISTRATION: 
-                    return '', 202
+                    elif user_state == AuthorizationState.READY:
+                        # return '', 200
+                        return hashlib.md5(number.encode('utf-8')).hexdigest()
 
-                elif user_state == AuthorizationState.READY:
-                    # return '', 200
-                    return hashlib.md5(number.encode('utf-8')).hexdigest()
+                except Exception as error:
+                    logging.exception(error)
 
-            except Exception as error:
-                logging.exception(error)
+                    if error.args[0] == 'PHONE_CODE_INVALID':
+                        return '', 403
 
-                if error.args[0] == 'PHONE_CODE_INVALID':
-                    return '', 403
-
-                raise error
-                
-        if user_state == AuthorizationState.READY:
-            return '', 200
-    except Exception as error:
-        logging.exception(error)
-    finally:
-        user.stop()
+                    raise error
+                    
+            if user_state == AuthorizationState.READY:
+                return '', 200
+        except Exception as error:
+            logging.exception(error)
+        finally:
+            user.stop()
 
     return '', 400
 
 
 @app.route('/users', methods=['POST'])
 def register_account():
-
     try:
         data = request.json
     except Exception as error:
         return 'invalid json', 400
+    else:
+        if not 'first_name' in data:
+            return 'first_name missing', 400
 
-    if not 'first_name' in data:
-        return 'first_name missing', 400
+        if not 'last_name' in data:
+            return 'last_name missing', 400
 
-    if not 'last_name' in data:
-        return 'last_name missing', 400
+        if not 'phonenumber' in data:
+            return 'phone number missing', 400
 
-    if not 'phonenumber' in data:
-        return 'phone number missing', 400
+        first_name = data['first_name']
+        last_name = data['last_name']
+        number = data['phonenumber']
+        logging.debug("registering a new user %s", number)
 
-    first_name = data['first_name']
-    last_name = data['last_name']
-    number = data['phonenumber']
-    logging.debug("registering a new user %s", number)
+        try:
+            user = Users(number)
+            registration_state = user.register(first_name, last_name)
+            if registration_state == AuthorizationState.READY:
+                return hashlib.md5(number.encode('utf-8')).hexdigest()
 
+        except Exception as error:
+            logging.exception(error)
+
+    return '', 400
+
+@app.route('/users', methods=['DELETE'])
+def delete_account():
     try:
-        user = Users(number)
-        registration_state = user.register(first_name, last_name)
-        if registration_state == AuthorizationState.READY:
-            return hashlib.md5(number.encode('utf-8')).hexdigest()
-
+        data = request.json
     except Exception as error:
-        logging.exception(error)
+        return 'invalid json', 400
+    else:
+        if not 'phonenumber_hash' in data:
+            return 'phone hash missing', 400
+
+        hashed_number = data['phonenumber_hash']
+        logging.debug("registering a new user %s", number)
+
+        try:
+            user = Users(phone=hashed_number)
+            user.delete()
+
+            return '', 200
+
+        except Exception as error:
+            logging.exception(error)
+
+            return '', 500
 
     return '', 400
 

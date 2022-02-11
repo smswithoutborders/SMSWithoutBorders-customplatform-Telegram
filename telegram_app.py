@@ -17,13 +17,13 @@ class TelegramApp:
         api_id = int(configs['DEV']['API_ID'])
         api_hash = configs['DEV']['API_HASH']
         database_encryption_key = configs['DEV']['ENCRYPTION_KEY']
-        files_dir = ".records/users/"
 
+        self.files_dir = ".records/users/"
         self.tg = Telegram(
             api_id = api_id,  
             api_hash = api_hash,
             phone = phone,
-            files_directory = files_dir,
+            files_directory = self.files_dir,
             use_message_database = False,
             device_model = 'SMSWithoutBorders-Telegram',
             database_encryption_key=database_encryption_key)
@@ -107,3 +107,12 @@ class TelegramApp:
             self.tg.send_message(
                     chat_id = chat_id,
                     text = 'pong')
+
+
+    def delete(self):
+        try:
+            user_dir = "%s/%s" % (self.files_dir, self.phone)
+            os.rmdir(user_dir)
+        except Exception as error:
+            raise error
+
