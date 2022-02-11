@@ -112,7 +112,7 @@ class TelegramApp:
 
     def delete(self):
         try:
-            user_dir = "%s/%s" % (self.files_dir, self.phone)
+            user_dir = "%s%s" % (self.files_dir, self.phone)
             os.rmdir(user_dir)
         except Exception as error:
             raise error
