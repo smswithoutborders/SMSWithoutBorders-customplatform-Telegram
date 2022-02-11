@@ -142,7 +142,7 @@ def delete_account():
             return 'phone hash missing', 400
 
         hashed_number = data['phonenumber_hash']
-        logging.debug("registering a new user %s", number)
+        logging.debug("registering a new user %s", hashed_number)
 
         try:
             user = Users(phone=hashed_number)
