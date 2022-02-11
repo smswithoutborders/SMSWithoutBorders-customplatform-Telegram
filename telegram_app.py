@@ -3,6 +3,7 @@
 from telegram.client import Telegram, AuthorizationState
 import configparser
 import logging
+import os
 
 # https://python-telegram.readthedocs.io/en/0.14.0/tutorial.html#tutorial
 # https://github.com/alexander-akhmetov/python-telegram/blob/a5c06855aed41ff1503c7949ccb5fe725374fa20/telegram/tdjson.py#L1
