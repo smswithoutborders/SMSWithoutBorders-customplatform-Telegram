@@ -46,7 +46,7 @@
 > `DELETE /users`
 ```json
 {
-	"phonenumber_hashed":"[MD5 Hashed phone number]",
+	"phonenumber_hash":"[MD5 Hashed phone number]",
 }
 ```
 > * Returns `200` if successful and `500` for any error
