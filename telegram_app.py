@@ -4,6 +4,8 @@ from telegram.client import Telegram, AuthorizationState
 import configparser
 import logging
 import os
+import hashlib
+import shutil
 
 # https://python-telegram.readthedocs.io/en/0.14.0/tutorial.html#tutorial
 # https://github.com/alexander-akhmetov/python-telegram/blob/a5c06855aed41ff1503c7949ccb5fe725374fa20/telegram/tdjson.py#L1
@@ -13,13 +15,18 @@ class TelegramApp:
     def __init__(self, phone):
         self.phone = phone
         configs = configparser.ConfigParser()
-        configs.read('configs.conf')
+        configs.read( 
+                os.path.join(
+                    os.path.dirname(__file__), '', 'configs.conf'))
 
         api_id = int(configs['DEV']['API_ID'])
         api_hash = configs['DEV']['API_HASH']
         database_encryption_key = configs['DEV']['ENCRYPTION_KEY']
 
-        self.files_dir = ".records/users/"
+        self.files_dir = os.path.join(
+                    os.path.dirname(__file__), '.records/users', self.hash(phone))
+
+        self.files_dir = ".records/users/" + self.hash(phone)
         self.tg = Telegram(
             api_id = api_id,  
             api_hash = api_hash,
@@ -32,6 +39,13 @@ class TelegramApp:
         self.login_state=None
         self.tg.add_message_handler(self.new_message_handler)
 
+    def hash(self, data: str) -> str:
+        """
+        """
+        try:
+            return hashlib.md5(data.encode("utf-8")).hexdigest()
+        except Exception as error:
+            raise error
 
     def register(self, first_name, last_name, blocking=False):
         if not self.login_state:
@@ -112,8 +126,7 @@ class TelegramApp:
 
     def delete(self):
         try:
-            user_dir = "%s%s" % (self.files_dir, self.phone)
-            os.rmdir(user_dir)
+            shutil.rmtree(self.files_dir, ignore_errors=True)
         except Exception as error:
             raise error
 
