@@ -5,6 +5,9 @@ from telegram_app import TelegramApp
 from telegram.client import AuthorizationState
 import sys
 import traceback
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Users(TelegramApp):
     def __init__(self, phone:str) -> None:

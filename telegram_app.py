@@ -6,11 +6,13 @@ import logging
 import os
 import hashlib
 import shutil
+import logging
 
 # https://python-telegram.readthedocs.io/en/0.14.0/tutorial.html#tutorial
 # https://github.com/alexander-akhmetov/python-telegram/blob/a5c06855aed41ff1503c7949ccb5fe725374fa20/telegram/tdjson.py#L1
 # https://python-telegram.readthedocs.io/en/0.14.0/tdlib.html
 
+logging.basicConfig(level=logging.DEBUG)
 class TelegramApp:
     def __init__(self, phone):
         self.phone = phone
@@ -26,7 +28,6 @@ class TelegramApp:
         self.files_dir = os.path.join(
                     os.path.dirname(__file__), '.records/users', self.hash(phone))
 
-        self.files_dir = ".records/users/" + self.hash(phone)
         self.tg = Telegram(
             api_id = api_id,  
             api_hash = api_hash,
@@ -37,7 +38,7 @@ class TelegramApp:
             database_encryption_key=database_encryption_key)
 
         self.login_state=None
-        self.tg.add_message_handler(self.new_message_handler)
+        # self.tg.add_message_handler(self.new_message_handler)
 
     def hash(self, data: str) -> str:
         """
@@ -83,7 +84,7 @@ class TelegramApp:
         logging.debug('* Logged in')
 
         state = self.tg.login(blocking=blocking)
-        # self.tg.stop()
+        self.tg.stop()
 
         return login_state
 
@@ -129,4 +130,8 @@ class TelegramApp:
             shutil.rmtree(self.files_dir, ignore_errors=True)
         except Exception as error:
             raise error
+
+    def send_message(self, chat_id: int, text: str) -> None:
+        """
+        """
 
