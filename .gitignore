@@ -3,3 +3,5 @@ venv/*
 configs.conf
 __pycache__/*
 .logs/*.log
+tmp/*
+tmp.py

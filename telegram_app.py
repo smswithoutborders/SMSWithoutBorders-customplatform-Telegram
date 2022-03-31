@@ -12,7 +12,7 @@ import logging
 # https://github.com/alexander-akhmetov/python-telegram/blob/a5c06855aed41ff1503c7949ccb5fe725374fa20/telegram/tdjson.py#L1
 # https://python-telegram.readthedocs.io/en/0.14.0/tdlib.html
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 class TelegramApp:
     def __init__(self, phone):
         self.phone = phone
@@ -84,7 +84,7 @@ class TelegramApp:
         logging.debug('* Logged in')
 
         state = self.tg.login(blocking=blocking)
-        self.tg.stop()
+        # self.tg.stop()
 
         return login_state
 
