@@ -12,7 +12,7 @@ import logging
 # https://github.com/alexander-akhmetov/python-telegram/blob/a5c06855aed41ff1503c7949ccb5fe725374fa20/telegram/tdjson.py#L1
 # https://python-telegram.readthedocs.io/en/0.14.0/tdlib.html
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 class TelegramApp:
     def __init__(self, phone):
         self.phone = phone
@@ -84,7 +84,7 @@ class TelegramApp:
         logging.debug('* Logged in')
 
         state = self.tg.login(blocking=blocking)
-        # self.tg.stop()
+        self.tg.stop()
 
         return login_state
 
@@ -131,7 +131,45 @@ class TelegramApp:
         except Exception as error:
             raise error
 
-    def send_message(self, chat_id: int, text: str) -> None:
+
+    def __find_chat_id__(self, _phone_number) -> int:
         """
         """
+        chats = self.tg.get_chats()
+        chats.wait()
+
+        # print(chats.update)
+
+        chat_ids = chats.update['chat_ids']
+        for chat_id in chat_ids:
+            chat = self.tg.get_chat(chat_id=chat_id)
+            chat.wait()
+            # logging.info("[+] %s", chat.update)
+
+            user_id = chat.update['last_message']['sender']['user_id']
+            # logging.debug("[+] %s", user_id)
+
+            user = self.tg.get_user(user_id=user_id)
+            user.wait()
+
+            # logging.debug("[+] %s", user.update)
+
+            first_name = user.update['first_name']
+            phone_number = user.update['phone_number']
+            # logging.debug("[+] first name: %s, phone number: %s", first_name, phone_number)
+
+            if phone_number == _phone_number:
+                return chat_id
+
+        return None
+
+    def send_message(self, phone_number: int, text: str) -> None:
+        """
+        """
+        phone_number = phone_number.replace('+', '')
+        chat_id = self.__find_chat_id__(_phone_number = phone_number)
+        if chat_id:
+            state = self.tg.send_message(chat_id, text)
+            state.wait()
+            logging.info("[+] Messaged %s, state = %s", first_name, state.update)
 
