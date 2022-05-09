@@ -1,5 +1,6 @@
 venv/*
 .venv/*
-configs.conf
+configs.ini
+records/
 __pycache__/*
 .logs/*.log
