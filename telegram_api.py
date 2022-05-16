@@ -1,6 +1,6 @@
 import logging
 
-from error import Conflict, BadRequest, InternalServerError, RegisterAccount, UnprocessableEntity
+from error import Conflict, BadRequest, Forbidden, InternalServerError, RegisterAccount, UnprocessableEntity
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,8 @@ async def validate_code():
         return jsonify(result), 200
     except BadRequest as error:
         return str(error), 400
+    except Forbidden as error:
+        return "", 403
     except RegisterAccount as error:
         return "", 202
     except InternalServerError as error:
@@ -98,6 +100,8 @@ async def register_account():
         return jsonify(result), 200
     except BadRequest as error:
         return str(error), 400
+    except Forbidden as error:
+        return "", 403
     except InternalServerError as error:
         logger.error(error)
         return "internal server error", 500

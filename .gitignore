@@ -4,5 +4,5 @@ venv/*
 .venv/*
 configs.ini
 records/
-__pycache__/*
+__pycache__
 .logs/*.log

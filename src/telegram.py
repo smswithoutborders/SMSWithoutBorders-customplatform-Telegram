@@ -193,6 +193,12 @@ async def register(phone_number, first_name, last_name):
             }
         }
 
+    except PhoneCodeInvalidError as error:
+        logger.error("The phone code entered was invalid")
+        raise Forbidden()
+    except PhoneCodeExpiredError as error:
+        logger.error("The confirmation code has expired")
+        raise Forbidden()
     except Exception as error:
         raise InternalServerError(error)
     finally:
