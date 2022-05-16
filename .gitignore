@@ -1,3 +1,5 @@
+logs/
+registry.json
 venv/*
 .venv/*
 configs.ini
