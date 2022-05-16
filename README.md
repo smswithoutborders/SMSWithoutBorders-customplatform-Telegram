@@ -148,7 +148,7 @@ logs=debug python3 telegram_api.py
 ```json
 {
   "phone_number": "[country_code][number]",
-  "recipient": "[country_code][number]" or "username" or "user ID",
+  "recipient": "[country_code][number] or username or user ID",
   "text": "Hello World!"
 }
 ```
