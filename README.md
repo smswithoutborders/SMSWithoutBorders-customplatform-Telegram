@@ -116,7 +116,7 @@ logs=debug python3 telegram_api.py
 ### Get all telegram contacts
 
 - Fetch all user's telegram contacts
-  > `POST /contacts
+  > `POST /contacts`
 
 ```json
 {
@@ -129,7 +129,7 @@ logs=debug python3 telegram_api.py
 ### Get all active dialogs
 
 - Fetch all user's active telegram chats
-  > `POST /dialogs
+  > `POST /dialogs`
 
 ```json
 {
@@ -143,7 +143,7 @@ logs=debug python3 telegram_api.py
 
 - Send a telegram message
 - If the recipient's contact is not in the user's contact list, it will be imported automatically in order for the telegram message to be sent.
-  > `POST /message
+  > `POST /message`
 
 ```json
 {
