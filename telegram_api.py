@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import logging
 
 from error import Conflict, BadRequest, Forbidden, InternalServerError, RegisterAccount, UnprocessableEntity
