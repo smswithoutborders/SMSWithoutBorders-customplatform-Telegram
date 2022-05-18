@@ -4,6 +4,7 @@
 
 - [Python](https://www.python.org/) (version >= [3.8.10](https://www.python.org/downloads/release/python-3810/))
 - [Python Virtual Environments](https://docs.python.org/3/tutorial/venv.html)
+- [Obtain your telegram credentials](https://core.telegram.org/api/obtaining_api_id)
 
 ## Installation
 
@@ -55,7 +56,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "[country_code][number]"
+  "phonenumber": "[country_code][number]"
 }
 ```
 
@@ -69,7 +70,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "[country_code][number]",
+  "phonenumber": "[country_code][number]",
   "code": "[code]"
 }
 ```
@@ -80,7 +81,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "",
+  "phonenumber": "",
   "profile": {}
 }
 ```
@@ -92,7 +93,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "[country_code][number]",
+  "phonenumber": "[country_code][number]",
   "first_name": "",
   "last_name": ""
 }
@@ -107,7 +108,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "[country_code][number]"
+  "phonenumber": "[country_code][number]"
 }
 ```
 
@@ -120,7 +121,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "[country_code][number]"
+  "phonenumber": "[country_code][number]"
 }
 ```
 
@@ -133,7 +134,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "[country_code][number]"
+  "phonenumber": "[country_code][number]"
 }
 ```
 
@@ -147,7 +148,7 @@ logs=debug python3 telegram_api.py
 
 ```json
 {
-  "phone_number": "[country_code][number]",
+  "phonenumber": "[country_code][number]",
   "recipient": "[country_code][number] or username or user ID",
   "text": "Hello World!"
 }
