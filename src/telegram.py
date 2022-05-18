@@ -3,6 +3,7 @@ import os
 import shutil
 import json
 import random
+import hashlib
 
 from telethon import TelegramClient
 from telethon.errors import (
@@ -18,7 +19,8 @@ from error import Forbidden, InternalServerError, Conflict, RegisterAccount, Unp
 
 logger = logging.getLogger(__name__)
 
-config_filepath = os.path.abspath("configs/configs.ini")
+config_filepath = os.path.join(
+        os.path.dirname(__file__), '../configs', 'configs.ini')
 
 if not os.path.exists(config_filepath):
     error = f"configs file not found at {config_filepath}"
@@ -31,103 +33,153 @@ dev = config["DEV"]
 api_id = dev['API_ID']
 api_hash = dev['API_HASH']
 
-async def initialization(phone_number):
+def md5hash( data: str) -> str:
+    """
+    """
     try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
-
-        # check if record exists
-        logger.debug("checking records ...")
-        if not os.path.exists(record_filepath):
-            os.makedirs(record_filepath)
-
-        # initialize telethon client
-        logger.debug("initializing telethon ...")
-        client = TelegramClient(f"{record_filepath}/{phone_number}", api_id=api_id, api_hash=api_hash)
-
-        # open telethon connection
-        logger.debug("opening connection ...")
-        await client.connect()
-
-        # check if record has session already
-        if not await client.is_user_authorized():
-            # send out authorization code
-            logger.debug(f"sending authorization code to {phone_number} ...")
-            result = await client.send_code_request(phone=f"{phone_number}", force_sms=True)
-            
-            # writing phone_code_hash to registry
-            write_registry(phone_number, "", result.phone_code_hash)
-
-            logger.info(f"Authorization code sent to {phone_number}")
-        else:
-            logger.error(f"Record {phone_number} exist")
-            raise Conflict()
+        return hashlib.md5(data.encode("utf-8")).hexdigest()
     except Exception as error:
-        raise InternalServerError(error)
-    finally:
-        # close telethon connection
-        logger.debug("closing connection ...")
-        await client.disconnect()
+        raise error
 
-async def validation(phone_number, code):
-    try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
+class TelegramApp:
 
-        # check if record exists
-        logger.debug("checking records ...")
-        if not os.path.exists(record_filepath):
-            os.makedirs(record_filepath)
+    def __init__(self, phone_number) -> None:
+        """
+        """
+        self.phone_number = phone_number
 
-        # initialize telethon client
-        logger.debug("initializing telethon ...")
-        client = TelegramClient(f"{record_filepath}/{phone_number}", api_id=api_id, api_hash=api_hash)
+        phone_number_hash = md5hash(data = phone_number)
+        self.record_filepath = os.path.join(
+                    os.path.dirname(__file__), '../records', phone_number_hash)
 
-        # open telethon connection
-        logger.debug("opening connection ...")
-        await client.connect()
+    async def initialization(self) -> None:
+        """
+        """
+        try:
+            if not os.path.exists(self.record_filepath):
+                logging.debug("- creating user file: %s", self.record_filepath)
+                os.makedirs(self.record_filepath)
 
-        # read registry for phone_code_hash
-        result = read_registry(phone_number)
+            # initialize telethon client
+            client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
 
-        # validate code
-        logger.debug("validating code ...")
-        await client.sign_in(f"{phone_number}", code=code, phone_code_hash=result["phone_code_hash"])
+            # open telethon connection
+            await client.connect()
+            logging.debug("- connection created")
 
-        logger.info("Code validation successful")
-        
-        # get user profile info
-        logger.debug("Fetching user's info ...")
-        me = await client.get_me()
+            # check if record has session already
+            if not await client.is_user_authorized():
+                # send out authorization code
+                result = await client.send_code_request(phone=self.phone_number, force_sms=True)
+                
+                # writing phone_code_hash to registry
+                self.__write_registry__(phone_code_hash=result.phone_code_hash)
+                logger.info("- authentication code sent to: %s", self.phone_number)
 
-        return {
-            "phone_number": phone_number,
-            "profile": {
-                "id": me.id,
-                "phone": me.phone,
-                "username": me.username,
-                "first_name": me.first_name,
-                "last_name": me.last_name
+            else:
+                raise Conflict()
+
+        except Exception as error:
+            raise InternalServerError(error)
+
+        finally:
+            # close telethon connection
+            await client.disconnect()
+
+    def __write_registry__(self, phone_code_hash: str, code: str = None)->None:
+        """
+        """
+        try:
+            # Data to be written
+            dictionary ={
+                "code" : code,
+                "phone_code_hash" : phone_code_hash
             }
-        }
+      
+            json_object = json.dumps(dictionary)
+            
+            # Writing to sample.json
+            registery_filepath = self.record_filepath + "/registry.json"
+            with open(registery_filepath, "w") as outfile:
+                outfile.write(json_object)
+            
+            return True
 
-    except PhoneNumberUnoccupiedError as error:
-        logger.error(f"{phone_number} has no account")
-        write_registry(phone_number, code, result["phone_code_hash"])
-        raise RegisterAccount()
-    except PhoneCodeInvalidError as error:
-        logger.error("The phone code entered was invalid")
-        raise Forbidden()
-    except PhoneCodeExpiredError as error:
-        logger.error("The confirmation code has expired")
-        raise Forbidden()
-    except SessionPasswordNeededError as error:
-        logger.error("wo-steps verification is enabled and a password is required")
-        raise InternalServerError(error)
-    except Exception as error:
-        raise InternalServerError(error)
-    finally:
-        # close telethon connection
-        logger.debug("closing connection ...")
-        await client.disconnect()
+        except Exception as error:
+            raise InternalServerError(error)
+
+
+    def __read_registry__(self) -> None:
+        """
+        """
+        try:
+            registery_filepath = self.record_filepath + "/registry.json"
+            with open(registery_filepath, 'r') as openfile:
+                json_object = json.load(openfile)
+            
+            os.remove(registery_filepath)
+            logger.debug("- removed user registery file: %s", registery_filepath)
+
+            return json_object
+
+        except Exception as error:
+            raise InternalServerError(error)
+    
+
+    async def validation(self, code: str) -> dict:
+        """
+        """
+        try:
+            # check if record exists
+            if not os.path.exists(self.record_filepath):
+                os.makedirs(self.record_filepath)
+
+            # initialize telethon client
+            client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
+            await client.connect()
+
+            result = self.__read_registry__()
+
+            # validate code
+            await client.sign_in(self.phone_number, 
+                    code=code, phone_code_hash=result["phone_code_hash"])
+            logger.info("- Code validation successful")
+            
+            # get user profile info
+            logger.debug("Fetching user's info ...")
+            me = await client.get_me()
+
+            return {
+                "phone_number": self.phone_number,
+                "profile": {
+                    "id": me.id,
+                    "phone": me.phone,
+                    "username": me.username,
+                    "first_name": me.first_name,
+                    "last_name": me.last_name
+                }
+            }
+
+        except PhoneNumberUnoccupiedError as error:
+            logger.error(f"{phone_number} has no account")
+            write_registry(phone_number, code, result["phone_code_hash"])
+            raise RegisterAccount()
+        except PhoneCodeInvalidError as error:
+            logger.error("The phone code entered was invalid")
+            raise Forbidden()
+        except PhoneCodeExpiredError as error:
+            logger.error("The confirmation code has expired")
+            raise Forbidden()
+        except SessionPasswordNeededError as error:
+            logger.error("wo-steps verification is enabled and a password is required")
+            raise InternalServerError(error)
+        except Exception as error:
+            raise InternalServerError(error)
+        finally:
+            # close telethon connection
+            logger.debug("closing connection ...")
+            await client.disconnect()
+
 
 async def revoke(phone_number):
     try:
@@ -206,50 +258,7 @@ async def register(phone_number, first_name, last_name):
         logger.debug("closing connection ...")
         await client.disconnect()
 
-def write_registry(phone_number, code, phone_code_hash):
-    try:
-        # Data to be written
-        dictionary ={
-            "code" : code,
-            "phone_code_hash" : phone_code_hash
-        }
-  
-        # Serializing json 
-        json_object = json.dumps(dictionary, indent = 4)
-        
-        record_filepath = os.path.abspath(f"records/{phone_number}")
-        # Writing to sample.json
-        logger.debug(f"writing registry for {phone_number} ...")
-        with open(f"{record_filepath}/registry.json", "w") as outfile:
-            outfile.write(json_object)
-        
-        logger.info(f"Registry successfully created for {phone_number}")
-        return True
 
-    except Exception as error:
-        raise InternalServerError(error)
-
-def read_registry(phone_number):
-    try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
-
-        # Opening JSON file
-        logger.debug(f"reading registry for {phone_number} ...")
-        with open(f"{record_filepath}/registry.json", 'r') as openfile:
-            # Reading from json file
-            json_object = json.load(openfile)
-        
-        logger.info(f"Registry found for {phone_number}")
-
-        logger.debug(f"removing registry for {phone_number} ...")
-        os.remove(f"{record_filepath}/registry.json")
-        
-        logger.info(f"Registry successfully removed for {phone_number}")
-        
-        return json_object
-
-    except Exception as error:
-        raise InternalServerError(error)
 
 async def contacts(phone_number):
     try:
