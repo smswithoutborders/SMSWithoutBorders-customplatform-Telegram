@@ -16,10 +16,6 @@ log = logger_config()
 
 api = config["API"]
 
-from src.telegram import (
-    dialogs
-)
-
 from src.telegram import TelegramApp
 
 @app.route("/", methods=["POST"])
@@ -190,16 +186,21 @@ async def get_dialogs():
 
         phoneNumber = request.json["phonenumber"]
 
-        result = await dialogs(phoneNumber)
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        result = await telegramApp.dialogs()
 
         return jsonify(result), 200
+
     except BadRequest as error:
+        app.logger.exception(error)
         return str(error), 400
+
     except InternalServerError as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
+
     except Exception as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
 
 @app.route("/message", methods=["POST"])

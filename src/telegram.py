@@ -326,43 +326,37 @@ class TelegramApp:
             logger.debug("closing connection ...")
             await client.disconnect()
 
-async def dialogs(phone_number):
-    try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
+    async def dialogs(self) -> list:
+        try:
+            # initialize telethon client
+            client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
+            await client.connect()
 
-        # initialize telethon client
-        logger.debug("initializing telethon ...")
-        client = TelegramClient(f"{record_filepath}/{phone_number}", api_id=api_id, api_hash=api_hash)
+            # fetch all active dialogs
+            dialogs = []
+            
+            logger.debug(f"Fetching all active dialogs for {self.phone_number} ...")
+            result = await client.get_dialogs()        
+            for dialog in result:
+                dialogs.append({
+                    "name": dialog.name,
+                    "id": dialog.entity.id,
+                    "message": {
+                        "id": dialog.message.id,
+                        "text": dialog.message.message,
+                        "date":dialog.message.date
+                    },
+                    "date": dialog.date,
+                    "type": "chat" if not hasattr(dialog.entity, "title") else "channel"
+                })
 
-        # open telethon connection
-        logger.debug("opening connection ...")
-        await client.connect()
-
-        # fetch all active dialogs
-        dialogs = []
+            logger.info("- Successfully fetched all active dialogs")
         
-        logger.debug(f"Fetching all active dialogs for {phone_number} ...")
-        result = await client.get_dialogs()        
-        for dialog in result:
-            dialogs.append({
-                "name": dialog.name,
-                "id": dialog.entity.id,
-                "message": {
-                    "id": dialog.message.id,
-                    "text": dialog.message.message,
-                    "date":dialog.message.date
-                },
-                "date": dialog.date,
-                "type": "chat" if not hasattr(dialog.entity, "title") else "channel"
-            })
+            return dialogs
 
-        logger.info("Successfully fetched all active dialogs")
-      
-        return dialogs
-
-    except Exception as error:
-        raise InternalServerError(error)
-    finally:
-        # close telethon connection
-        logger.debug("closing connection ...")
-        await client.disconnect()
+        except Exception as error:
+            raise InternalServerError(error)
+        finally:
+            # close telethon connection
+            logger.debug("closing connection ...")
+            await client.disconnect()
