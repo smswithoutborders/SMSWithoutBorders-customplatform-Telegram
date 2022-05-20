@@ -15,7 +15,7 @@ async def execute(body: str, user_details: dict)->None:
 
     sender_phonenumber = user_details['phone_number']
     phonenumber = body[0]
-    message = ":".join(body[1])
+    message = ":".join(body[1:])
 
     try:
         telegram = TelegramApp(phone_number=sender_phonenumber)

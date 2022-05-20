@@ -190,7 +190,7 @@ class TelegramApp:
             await client.connect()
 
             # sent message
-            logger.debug(f"sending message to {recipient} ...")
+            logger.debug("sending message to: %s...", recipient)
             await client.send_message(recipient, text)
 
             logger.info("- Successfully sent message")
