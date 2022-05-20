@@ -51,6 +51,8 @@ class TelegramApp:
         phone_number_hash = md5hash(data = phone_number)
         self.record_filepath = os.path.join(
                     os.path.dirname(__file__), '../records', phone_number_hash)
+        self.record_session_filepath = os.path.join(
+                    os.path.dirname(__file__), '../records', phone_number_hash, phone_number_hash)
 
     async def initialization(self) -> None:
         """
@@ -61,7 +63,7 @@ class TelegramApp:
                 os.makedirs(self.record_filepath)
 
             # initialize telethon client
-            client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
+            client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
 
             # open telethon connection
             await client.connect()
@@ -135,7 +137,7 @@ class TelegramApp:
                 os.makedirs(self.record_filepath)
 
             # initialize telethon client
-            client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
+            client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
             await client.connect()
 
             result = self.__read_registry__()
@@ -161,8 +163,8 @@ class TelegramApp:
             }
 
         except PhoneNumberUnoccupiedError as error:
-            logger.error(f"{phone_number} has no account")
-            write_registry(phone_number, code, result["phone_code_hash"])
+            logger.error(f"{self.phone_number} has no account")
+            self.__write_registry__(code=code, phone_code_hash=result["phone_code_hash"])
             raise RegisterAccount()
         except PhoneCodeInvalidError as error:
             logger.error("The phone code entered was invalid")
@@ -180,6 +182,51 @@ class TelegramApp:
             logger.debug("closing connection ...")
             await client.disconnect()
 
+
+    async def message(self, recipoent: str, text: str) -> bool:
+        """
+        """
+        try:
+            # initialize telethon client
+            client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
+            await client.connect()
+
+            # sent message
+            logger.debug(f"sending message to {recipoent} ...")
+            await client.send_message(f"{recipoent}", f"{text}")
+
+            logger.info("- Successfully sent message")
+
+            return True
+        except ValueError as error:
+            if str(error) == f'Cannot find any entity corresponding to "{recipoent}"':
+                logger.error(error)
+                
+                try:
+                    # add recipient to contact list
+                    logger.debug(f"adding {recipoent} to contact list ...")
+                    contact = InputPhoneContact(random.randint(0, 9999), recipoent, str(recipoent), "")
+                    await client(functions.contacts.ImportContactsRequest([contact]))
+
+                    logger.info(f"Succesfully added {recipoent} to contact list")
+                    
+                    # sent message
+                    logger.debug(f"sending message to {recipoent} ...")
+                    await client.send_message(f"{recipoent}", f"{text}")
+                    
+                    logger.info("- Successfully sent message")
+
+                    return True
+                except ValueError as error:
+                    if str(error) == f'Cannot find any entity corresponding to "{recipoent}"':
+                        logger.error(error)
+                        raise UnprocessableEntity()
+        except Exception as error:
+            raise InternalServerError(error)
+        finally:
+            # close telethon connection
+            logger.debug("closing connection ...")
+            await client.disconnect()
 
 async def revoke(phone_number):
     try:

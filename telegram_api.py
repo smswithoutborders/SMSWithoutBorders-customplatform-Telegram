@@ -207,18 +207,25 @@ async def send_message():
         recipient = request.json["recipient"]
         text = request.json["text"]
 
-        await message(phoneNumber, recipient, text)
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        await telegramApp.message(recipient, text)
 
         return "", 200
+
     except BadRequest as error:
+        app.logger.exception(error)
         return str(error), 400
+
     except UnprocessableEntity as error:
-        return str(error), 422
+        app.logger.exception(error)
+        return "", 422
+
     except InternalServerError as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
+
     except Exception as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
 
 
