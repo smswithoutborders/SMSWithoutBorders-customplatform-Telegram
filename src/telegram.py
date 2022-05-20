@@ -252,53 +252,47 @@ class TelegramApp:
             logger.debug("closing connection ...")
             await client.disconnect()
 
-async def register(phone_number, first_name, last_name):
-    try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
+    async def register(self, first_name: str, last_name: str):
+        try:
+             # initialize telethon client
+            client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
+            await client.connect()
 
-        registry_data = read_registry(phone_number)
+            result = self.__read_registry__()
 
-        # initialize telethon client
-        logger.debug("initializing telethon ...")
-        client = TelegramClient(f"{record_filepath}/{phone_number}", api_id=api_id, api_hash=api_hash)
+            # validate code
+            logger.debug(f"creating account for {self.phone_number} ...")
+            await client.sign_up(code=result["code"], first_name=first_name, last_name=last_name, phone=f"{self.phone_number}", phone_code_hash=result["phone_code_hash"])
 
-        # open telethon connection
-        logger.debug("opening connection ...")
-        await client.connect()
+            logger.info("- Account successfully created")
+            
+            # get user profile info
+            logger.debug("Fetching user's info ...")
+            me = await client.get_me()
 
-        # validate code
-        logger.debug(f"creating account for {phone_number} ...")
-        await client.sign_up(code=registry_data["code"], first_name=first_name, last_name=last_name, phone=f"{phone_number}", phone_code_hash=registry_data["phone_code_hash"])
-
-        logger.info("account successfully created")
-        
-        # get user profile info
-        logger.debug("Fetching user's info ...")
-        me = await client.get_me()
-
-        return {
-            "phone_number": phone_number,
-            "profile": {
-                "id": me.id,
-                "phone": me.phone,
-                "username": me.username,
-                "first_name": me.first_name,
-                "last_name": me.last_name
+            return {
+                "phone_number": self.phone_number,
+                "profile": {
+                    "id": me.id,
+                    "phone": me.phone,
+                    "username": me.username,
+                    "first_name": me.first_name,
+                    "last_name": me.last_name
+                }
             }
-        }
 
-    except PhoneCodeInvalidError as error:
-        logger.error("The phone code entered was invalid")
-        raise Forbidden()
-    except PhoneCodeExpiredError as error:
-        logger.error("The confirmation code has expired")
-        raise Forbidden()
-    except Exception as error:
-        raise InternalServerError(error)
-    finally:
-        # close telethon connection
-        logger.debug("closing connection ...")
-        await client.disconnect()
+        except PhoneCodeInvalidError as error:
+            logger.error("The phone code entered was invalid")
+            raise Forbidden()
+        except PhoneCodeExpiredError as error:
+            logger.error("The confirmation code has expired")
+            raise Forbidden()
+        except Exception as error:
+            raise InternalServerError(error)
+        finally:
+            # close telethon connection
+            logger.debug("closing connection ...")
+            await client.disconnect()
 
 
 async def contacts(phone_number):

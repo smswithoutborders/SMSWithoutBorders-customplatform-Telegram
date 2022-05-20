@@ -17,7 +17,6 @@ log = logger_config()
 api = config["API"]
 
 from src.telegram import (
-    register, 
     contacts, 
     dialogs
 )
@@ -110,18 +109,25 @@ async def register_account():
         firstName = request.json["first_name"]
         lastName = request.json["last_name"]
 
-        result = await register(phoneNumber, firstName, lastName)
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        result = await telegramApp.register(firstName, lastName)
 
-        return jsonify(result), 200
+        return result["phone_number"], 200
+
     except BadRequest as error:
+        app.logger.exception(error)
         return str(error), 400
+
     except Forbidden as error:
+        app.logger.exception(error)
         return "", 403
+
     except InternalServerError as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
+
     except Exception as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
 
 @app.route("/users", methods=["DELETE"])
