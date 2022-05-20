@@ -252,7 +252,7 @@ class TelegramApp:
             logger.debug("closing connection ...")
             await client.disconnect()
 
-    async def register(self, first_name: str, last_name: str):
+    async def register(self, first_name: str, last_name: str) -> dict:
         try:
              # initialize telethon client
             client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
@@ -295,42 +295,36 @@ class TelegramApp:
             await client.disconnect()
 
 
-async def contacts(phone_number):
-    try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
+    async def contacts(self) -> list:
+        try:
+            # initialize telethon client
+            client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
+            await client.connect()
 
-        # initialize telethon client
-        logger.debug("initializing telethon ...")
-        client = TelegramClient(f"{record_filepath}/{phone_number}", api_id=api_id, api_hash=api_hash)
+            # fetch telegram contacts
+            contacts = []
+            
+            logger.debug(f"Fetching telegram contacts for {self.phone_number} ...")
+            result = await client(functions.contacts.GetContactsRequest(hash=0))
+            for user in result.users:
+                contacts.append({
+                    "id": user.id,
+                    "phone": user.phone,
+                    "username": user.username,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name
+                })
 
-        # open telethon connection
-        logger.debug("opening connection ...")
-        await client.connect()
-
-        # fetch telegram contacts
-        contacts = []
+            logger.info("- Successfully fetched all telegram contacts")
         
-        logger.debug(f"Fetching telegram contacts for {phone_number} ...")
-        result = await client(functions.contacts.GetContactsRequest(hash=0))
-        for user in result.users:
-            contacts.append({
-                "id": user.id,
-                "phone": user.phone,
-                "username": user.username,
-                "first_name": user.first_name,
-                "last_name": user.last_name
-            })
+            return contacts
 
-        logger.info("Successfully fetched all telegram contacts")
-      
-        return contacts
-
-    except Exception as error:
-        raise InternalServerError(error)
-    finally:
-        # close telethon connection
-        logger.debug("closing connection ...")
-        await client.disconnect()
+        except Exception as error:
+            raise InternalServerError(error)
+        finally:
+            # close telethon connection
+            logger.debug("closing connection ...")
+            await client.disconnect()
 
 async def dialogs(phone_number):
     try:
