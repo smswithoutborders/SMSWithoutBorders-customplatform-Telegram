@@ -17,11 +17,9 @@ log = logger_config()
 api = config["API"]
 
 from src.telegram import (
-    revoke, 
     register, 
     contacts, 
-    dialogs,
-    message
+    dialogs
 )
 
 from src.telegram import TelegramApp
@@ -73,7 +71,6 @@ async def validate_code():
         telegramApp = TelegramApp(phone_number = phoneNumber)
         result = await telegramApp.validation(code=code)
 
-        # return jsonify(result), 200
         return result['phone_number'], 200
 
     except BadRequest as error:
@@ -136,16 +133,21 @@ async def revoke_access():
 
         phoneNumber = request.json["phonenumber"]
 
-        await revoke(phoneNumber)
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        await telegramApp.revoke()
 
         return "", 200
+
     except BadRequest as error:
+        app.logger.exception(error)
         return str(error), 400
+
     except InternalServerError as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
+
     except Exception as error:
-        logger.error(error)
+        app.logger.exception(error)
         return "internal server error", 500
 
 @app.route("/contacts", methods=["POST"])

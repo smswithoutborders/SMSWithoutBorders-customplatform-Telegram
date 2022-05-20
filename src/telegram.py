@@ -228,34 +228,29 @@ class TelegramApp:
             logger.debug("closing connection ...")
             await client.disconnect()
 
-async def revoke(phone_number):
-    try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
+    async def revoke(self) -> bool:
+        try:
+            # initialize telethon client
+            client = TelegramClient(self.record_session_filepath, api_id=api_id, api_hash=api_hash)
+            await client.connect()
 
-        # initialize telethon client
-        logger.debug("initializing telethon ...")
-        client = TelegramClient(f"{record_filepath}/{phone_number}", api_id=api_id, api_hash=api_hash)
+            # revoke access
+            logger.debug(f"revoking {self.phone_number} access ...")
+            await client.log_out()
 
-        # open telethon connection
-        logger.debug("opening connection ...")
-        await client.connect()
+            logger.debug("deleting deps ...")
+            shutil.rmtree(self.record_filepath)
 
-        # revoke access
-        logger.debug(f"revoking {phone_number} access ...")
-        await client.log_out()
-        logger.debug("deleting deps ...")
-        shutil.rmtree(record_filepath)
+            logger.info("- Successfully revoked access")
+        
+            return True
 
-        logger.info("Successfully revoked access")
-      
-        return True
-
-    except Exception as error:
-        raise InternalServerError(error)
-    finally:
-        # close telethon connection
-        logger.debug("closing connection ...")
-        await client.disconnect()
+        except Exception as error:
+            raise InternalServerError(error)
+        finally:
+            # close telethon connection
+            logger.debug("closing connection ...")
+            await client.disconnect()
 
 async def register(phone_number, first_name, last_name):
     try:
@@ -304,7 +299,6 @@ async def register(phone_number, first_name, last_name):
         # close telethon connection
         logger.debug("closing connection ...")
         await client.disconnect()
-
 
 
 async def contacts(phone_number):
@@ -384,54 +378,3 @@ async def dialogs(phone_number):
         # close telethon connection
         logger.debug("closing connection ...")
         await client.disconnect()
-
-async def message(phone_number, recipoent, text):
-    try:
-        record_filepath = os.path.abspath(f"records/{phone_number}")
-
-        # initialize telethon client
-        logger.debug("initializing telethon ...")
-        client = TelegramClient(f"{record_filepath}/{phone_number}", api_id=api_id, api_hash=api_hash)
-
-        # open telethon connection
-        logger.debug("opening connection ...")
-        await client.connect()
-
-        # sent message
-        logger.debug(f"sending message to {recipoent} ...")
-        await client.send_message(f"{recipoent}", f"{text}")
-
-        logger.info("Successfully sent message")
-      
-        return True
-
-    except ValueError as error:
-        if str(error) == f'Cannot find any entity corresponding to "{recipoent}"':
-            logger.error(error)
-            
-            try:
-                # add recipient to contact list
-                logger.debug(f"adding {recipoent} to contact list ...")
-                contact = InputPhoneContact(random.randint(0, 9999), recipoent, str(recipoent), "")
-                await client(functions.contacts.ImportContactsRequest([contact]))
-
-                logger.info(f"Succesfully added {recipoent} to contact list")
-                
-                # sent message
-                logger.debug(f"sending message to {recipoent} ...")
-                await client.send_message(f"{recipoent}", f"{text}")
-                
-                logger.info("Successfully sent message")
-
-                return True
-            except ValueError as error:
-                if str(error) == f'Cannot find any entity corresponding to "{recipoent}"':
-                    logger.error(error)
-                    raise UnprocessableEntity()
-    except Exception as error:
-        raise InternalServerError(error)
-    finally:
-        # close telethon connection
-        logger.debug("closing connection ...")
-        await client.disconnect()
-
