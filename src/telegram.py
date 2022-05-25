@@ -239,8 +239,10 @@ class TelegramApp:
             logger.debug(f"revoking {self.phone_number} access ...")
             await client.log_out()
 
+            """
             logger.debug("deleting deps ...")
-            shutil.rmtree(self.record_filepath)
+            shutil.rmtree(self.record_filepath + ".session")
+            """
 
             logger.info("- Successfully revoked access")
         

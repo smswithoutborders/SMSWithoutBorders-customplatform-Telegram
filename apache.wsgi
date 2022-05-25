@@ -8,4 +8,4 @@ logging.basicConfig(stream=sys.stderr)
 dir_path = os.path.dirname(abspath(getsourcefile(lambda:0)))
 sys.path.insert(0, dir_path)
 
-from main import app as application
+from telegram_api import app as application
