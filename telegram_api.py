@@ -1,188 +1,246 @@
 #!/usr/bin/env python3
-
-import os, sys
 import logging
-import argparse
-import hashlib
-from flask import Flask, request, jsonify
-from flask_cors import CORS
 
-from users import Users
-from telegram.client import AuthorizationState
+from error import Conflict, BadRequest, Forbidden, InternalServerError, RegisterAccount, UnprocessableEntity
 
+logger = logging.getLogger(__name__)
+
+from flask import Flask, jsonify, request
 app = Flask(__name__)
-CORS(app)
 
+from Configs import configuration
+config = configuration()
 
-@app.route('/', methods=['POST'])
-def start_session():
-    logging.debug("starting new session for user")
-    data = None
+from logs import logger_config
+log = logger_config()
 
+api = config["API"]
+
+from src.telegram import TelegramApp
+
+@app.route("/", methods=["POST"])
+async def start_session():
     try:
-        data = request.json
+        app.logger.debug(request.json)
+        if not "phonenumber" in request.json or not request.json["phonenumber"]:
+            logger.error("no phonenumber")
+            raise BadRequest()
+
+        phoneNumber = request.json["phonenumber"]
+
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        await telegramApp.initialization()
+
+        return "", 201
+
+    except BadRequest as error:
+        app.logger.exception(error)
+        return str(error), 400
+
+    except Conflict as error:
+        return "", 200
+
+    except InternalServerError as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
     except Exception as error:
-        return 'invalid json', 400
-    else:
-        if not 'phonenumber' in data:
-            return 'phone number missing', 400
+        app.logger.exception(error)
+        return "internal server error", 500
 
-        number = data['phonenumber']
-        user = Users(number)
-        try:
-            user_state = user.get_state()
-            logging.info("%s", user_state)
-            if user_state == AuthorizationState.READY:
-                return '', 200
-
-            if user_state == AuthorizationState.WAIT_CODE:
-                return '', 201
-
-        except Exception as error:
-            logging.exception(error)
-        finally:
-            user.stop()
-
-        return '', 400
-
-
-@app.route('/', methods=['PUT'])
-def wait_code():
-    data=None
-
+@app.route("/", methods=["PUT"])
+async def validate_code():
     try:
-        data = request.json
+        if not "phonenumber" in request.json or not request.json["phonenumber"]:
+            logger.error("no phonenumber")
+            raise BadRequest()
+
+        elif not "code" in request.json or not request.json["code"]:
+            logger.error("no code")
+            raise BadRequest()
+
+        phoneNumber = request.json["phonenumber"]
+        code = request.json["code"]
+
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        result = await telegramApp.validation(code=code)
+
+        return result['phone_number'], 200
+
+    except BadRequest as error:
+        app.logger.exception(error)
+        return str(error), 400
+
+    except Forbidden as error:
+        app.logger.exception(error)
+        return "", 403
+
+    except RegisterAccount as error:
+        app.logger.exception(error)
+        return "", 202
+
+    except InternalServerError as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
     except Exception as error:
-        return 'invalid json', 400
-    else:
-        password = None
-        if not 'code' in data:
-            return 'code missing', 400
+        app.logger.exception(error)
+        return "internal server error", 500
 
-        if not 'phonenumber' in data:
-            return 'phone number missing', 400
-
-        code = data['code']
-        number = data['phonenumber']
-        logging.debug("getting code for user %s", number)
-
-        user = Users(number)
-        try:
-            user_state = user.get_state()
-            if user_state == AuthorizationState.WAIT_CODE:
-                logging.info("User code awaits...")
-                try:
-                    user_state = user.wait_login(password if password else code)
-
-                    if user_state == AuthorizationState.WAIT_REGISTRATION: 
-                        return '', 202
-
-                    elif user_state == AuthorizationState.READY:
-                        # return '', 200
-                        return hashlib.md5(number.encode('utf-8')).hexdigest()
-
-                except Exception as error:
-                    logging.exception(error)
-
-                    if error.args[0] == 'PHONE_CODE_INVALID':
-                        return '', 403
-
-                    raise error
-                    
-            if user_state == AuthorizationState.READY:
-                return '', 200
-        except Exception as error:
-            logging.exception(error)
-        finally:
-            user.stop()
-
-    return '', 400
-
-
-@app.route('/users', methods=['POST'])
-def register_account():
+@app.route("/users", methods=["POST"])
+async def register_account():
     try:
-        data = request.json
+        if not "phonenumber" in request.json or not request.json["phonenumber"]:
+            logger.error("no phonenumber")
+            raise BadRequest()
+        elif not "first_name" in request.json or not request.json["first_name"]:
+            logger.error("no first_name")
+            raise BadRequest()
+        elif not "last_name" in request.json or not request.json["last_name"]:
+            logger.error("no last_name")
+            raise BadRequest()
+
+        phoneNumber = request.json["phonenumber"]
+        firstName = request.json["first_name"]
+        lastName = request.json["last_name"]
+
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        result = await telegramApp.register(firstName, lastName)
+
+        return result["phone_number"], 200
+
+    except BadRequest as error:
+        app.logger.exception(error)
+        return str(error), 400
+
+    except Forbidden as error:
+        app.logger.exception(error)
+        return "", 403
+
+    except InternalServerError as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
     except Exception as error:
-        return 'invalid json', 400
-    else:
-        if not 'first_name' in data:
-            return 'first_name missing', 400
+        app.logger.exception(error)
+        return "internal server error", 500
 
-        if not 'last_name' in data:
-            return 'last_name missing', 400
-
-        if not 'phonenumber' in data:
-            return 'phone number missing', 400
-
-        first_name = data['first_name']
-        last_name = data['last_name']
-        number = data['phonenumber']
-        logging.debug("registering a new user %s", number)
-
-        try:
-            user = Users(number)
-            registration_state = user.register(first_name, last_name)
-            if registration_state == AuthorizationState.READY:
-                return hashlib.md5(number.encode('utf-8')).hexdigest()
-
-        except Exception as error:
-            logging.exception(error)
-
-    return '', 400
-
-@app.route('/users', methods=['DELETE'])
-def delete_account():
+@app.route("/users", methods=["DELETE"])
+async def revoke_access():
     try:
-        data = request.json
+        if not "phonenumber" in request.json or not request.json["phonenumber"]:
+            logger.error("no phonenumber")
+            raise BadRequest()
+
+        phoneNumber = request.json["phonenumber"]
+
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        await telegramApp.revoke()
+
+        return "", 200
+
+    except BadRequest as error:
+        app.logger.exception(error)
+        return str(error), 400
+
+    except InternalServerError as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
     except Exception as error:
-        return 'invalid json', 400
-    else:
-        if not 'phonenumber_hash' in data:
-            return 'phone hash missing', 400
+        app.logger.exception(error)
+        return "internal server error", 500
 
-        hashed_number = data['phonenumber_hash']
-        logging.debug("registering a new user %s", hashed_number)
+@app.route("/contacts", methods=["POST"])
+async def get_contacts():
+    try:
+        if not "phonenumber" in request.json or not request.json["phonenumber"]:
+            logger.error("no phonenumber")
+            raise BadRequest()
 
-        try:
-            user = Users(phone=hashed_number)
-            user.delete()
+        phoneNumber = request.json["phonenumber"]
 
-            return '', 200
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        result = await telegramApp.contacts()
 
-        except Exception as error:
-            logging.exception(error)
+        return jsonify(result), 200
 
-            return '', 500
+    except BadRequest as error:
+        app.logger.exception(error)
+        return str(error), 400
 
-    return '', 400
+    except InternalServerError as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
+    except Exception as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
+@app.route("/dialogs", methods=["POST"])
+async def get_dialogs():
+    try:
+        if not "phonenumber" in request.json or not request.json["phonenumber"]:
+            logger.error("no phonenumber")
+            raise BadRequest()
+
+        phoneNumber = request.json["phonenumber"]
+
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        result = await telegramApp.dialogs()
+
+        return jsonify(result), 200
+
+    except BadRequest as error:
+        app.logger.exception(error)
+        return str(error), 400
+
+    except InternalServerError as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
+    except Exception as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
+@app.route("/message", methods=["POST"])
+async def send_message():
+    try:
+        if not "phonenumber" in request.json or not request.json["phonenumber"]:
+            logger.error("no phonenumber")
+            raise BadRequest()
+        elif not "recipient" in request.json or not request.json["recipient"]:
+            logger.error("no recipient")
+            raise BadRequest()
+        elif not "text" in request.json or not request.json["text"]:
+            logger.error("no text")
+            raise BadRequest()
+
+        phoneNumber = request.json["phonenumber"]
+        recipient = request.json["recipient"]
+        text = request.json["text"]
+
+        telegramApp = TelegramApp(phone_number = phoneNumber)
+        await telegramApp.message(recipient, text)
+
+        return "", 200
+
+    except BadRequest as error:
+        app.logger.exception(error)
+        return str(error), 400
+
+    except UnprocessableEntity as error:
+        app.logger.exception(error)
+        return "", 422
+
+    except InternalServerError as error:
+        app.logger.exception(error)
+        return "internal server error", 500
+
+    except Exception as error:
+        app.logger.exception(error)
+        return "internal server error", 500
 
 
 if __name__ == "__main__":
-
-    debug = True
-    parser = argparse.ArgumentParser(description='Process some integers.')
-
-    parser.add_argument(
-            '-l', '--log',
-            default='CRITICAL',
-            help='--log=[DEBUG, INFO, WARNING, ERROR, CRITICAL]')
-
-    parser.add_argument("-d", "--debug",
-            help="turn on flask debug mode")
-
-    args = parser.parse_args()
-
-
-    log_file_path = os.path.join(os.path.dirname(__file__), '.logs', 'api.log')
-
-    logging.basicConfig(
-        # format='%(asctime)s|[%(levelname)s] %(pathname)s %(lineno)d|%(message)s',
-        format='%(asctime)s|[%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[
-            logging.FileHandler(log_file_path),
-            logging.StreamHandler(sys.stdout) ],
-        level=args.log.upper())
-
-    app.run( debug=debug )
+    app.run(host=api["host"], port=api["port"])

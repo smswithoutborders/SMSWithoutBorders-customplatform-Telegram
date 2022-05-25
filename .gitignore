@@ -1,7 +1,10 @@
+logs/
+registry.json
 venv/*
 .venv/*
-configs.conf
-__pycache__/*
+configs.ini
+records/
+__pycache__
 .logs/*.log
 tmp/*
 tmp.py
