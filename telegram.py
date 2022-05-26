@@ -33,9 +33,13 @@ def execute(body: str, user_details: dict)->None:
     """
 
     try:
-        loop = asyncio.get_event_loop()
-        future = asyncio.ensure_future(run(body, user_details))
-        loop.run_until_complete(future)
+        """
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        # future = asyncio.ensure_future(run(body, user_details))
+        loop.close()
+        """
+        asyncio.run(run(body, user_details))
     except Exception as error:
         raise error
 
