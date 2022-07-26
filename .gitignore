@@ -6,3 +6,5 @@ configs.ini
 records/
 __pycache__
 .logs/*.log
+tmp/*
+tmp.py
