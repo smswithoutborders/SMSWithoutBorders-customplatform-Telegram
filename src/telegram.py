@@ -79,6 +79,8 @@ class TelegramApp:
             else:
                 raise Conflict()
 
+        except Conflict:
+            raise Conflict()
         except Exception as error:
             raise InternalServerError(error)
 
