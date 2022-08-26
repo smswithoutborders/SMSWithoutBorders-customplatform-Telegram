@@ -220,6 +220,9 @@ class TelegramApp:
             client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
             await client.connect()
 
+            # fetch dialogs
+            await self.dialogs()
+
             # sent message
             logger.debug("sending message to: %s...", recipient)
             await client.send_message(recipient, text)
@@ -333,7 +336,6 @@ class TelegramApp:
             # close telethon connection
             logger.debug("closing connection ...")
             await client.disconnect()
-
 
     async def contacts(self) -> list:
         """
