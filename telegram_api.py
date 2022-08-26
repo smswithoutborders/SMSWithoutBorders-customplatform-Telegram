@@ -1,27 +1,33 @@
 #!/usr/bin/env python3
+
 import logging
-
-from error import Conflict, BadRequest, Forbidden, InternalServerError, RegisterAccount, UnprocessableEntity
-
 logger = logging.getLogger(__name__)
-
-from flask import Flask, jsonify, request
-app = Flask(__name__)
 
 from Configs import configuration
 config = configuration()
 
-from logs import logger_config
-log = logger_config()
-
 api = config["API"]
 
-from src.telegram import TelegramApp
+from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import UnprocessableEntity
+
+from telegram_app import TelegramApp
+from telegram_app import RegisterAccountError
+from telegram_app import SessionExistError
+from telegram_app import InvalidCodeError
+from telegram_app import TooManyRequests
+
+from flask import Flask
+from flask import jsonify
+from flask import request
+
+app = Flask(__name__)
 
 @app.route("/", methods=["POST"])
 async def start_session():
+    """
+    """
     try:
-        app.logger.debug(request.json)
         if not "phonenumber" in request.json or not request.json["phonenumber"]:
             logger.error("no phonenumber")
             raise BadRequest()
@@ -34,15 +40,13 @@ async def start_session():
         return "", 201
 
     except BadRequest as error:
-        app.logger.exception(error)
         return str(error), 400
 
-    except Conflict as error:
+    except SessionExistError as error:
         return "", 200
 
-    except InternalServerError as error:
-        app.logger.exception(error)
-        return "internal server error", 500
+    except TooManyRequests as error:
+        return "", 429
 
     except Exception as error:
         app.logger.exception(error)
@@ -50,6 +54,8 @@ async def start_session():
 
 @app.route("/", methods=["PUT"])
 async def validate_code():
+    """
+    """
     try:
         if not "phonenumber" in request.json or not request.json["phonenumber"]:
             logger.error("no phonenumber")
@@ -68,20 +74,16 @@ async def validate_code():
         return result['phone_number'], 200
 
     except BadRequest as error:
-        app.logger.exception(error)
         return str(error), 400
 
-    except Forbidden as error:
-        app.logger.exception(error)
+    except InvalidCodeError as error:
         return "", 403
 
-    except RegisterAccount as error:
-        app.logger.exception(error)
-        return "", 202
+    except TooManyRequests as error:
+        return "", 429
 
-    except InternalServerError as error:
-        app.logger.exception(error)
-        return "internal server error", 500
+    except RegisterAccountError as error:
+        return "", 202
 
     except Exception as error:
         app.logger.exception(error)
@@ -89,6 +91,8 @@ async def validate_code():
 
 @app.route("/users", methods=["POST"])
 async def register_account():
+    """
+    """
     try:
         if not "phonenumber" in request.json or not request.json["phonenumber"]:
             logger.error("no phonenumber")
@@ -110,16 +114,13 @@ async def register_account():
         return result["phone_number"], 200
 
     except BadRequest as error:
-        app.logger.exception(error)
         return str(error), 400
 
-    except Forbidden as error:
-        app.logger.exception(error)
+    except InvalidCodeError as error:
         return "", 403
 
-    except InternalServerError as error:
-        app.logger.exception(error)
-        return "internal server error", 500
+    except TooManyRequests as error:
+        return "", 429
 
     except Exception as error:
         app.logger.exception(error)
@@ -127,6 +128,8 @@ async def register_account():
 
 @app.route("/users", methods=["DELETE"])
 async def revoke_access():
+    """
+    """
     try:
         if not "phonenumber" in request.json or not request.json["phonenumber"]:
             logger.error("no phonenumber")
@@ -140,12 +143,7 @@ async def revoke_access():
         return "", 200
 
     except BadRequest as error:
-        app.logger.exception(error)
         return str(error), 400
-
-    except InternalServerError as error:
-        app.logger.exception(error)
-        return "internal server error", 500
 
     except Exception as error:
         app.logger.exception(error)
@@ -153,6 +151,8 @@ async def revoke_access():
 
 @app.route("/contacts", methods=["POST"])
 async def get_contacts():
+    """
+    """
     try:
         if not "phonenumber" in request.json or not request.json["phonenumber"]:
             logger.error("no phonenumber")
@@ -166,12 +166,7 @@ async def get_contacts():
         return jsonify(result), 200
 
     except BadRequest as error:
-        app.logger.exception(error)
         return str(error), 400
-
-    except InternalServerError as error:
-        app.logger.exception(error)
-        return "internal server error", 500
 
     except Exception as error:
         app.logger.exception(error)
@@ -179,6 +174,8 @@ async def get_contacts():
 
 @app.route("/dialogs", methods=["POST"])
 async def get_dialogs():
+    """
+    """
     try:
         if not "phonenumber" in request.json or not request.json["phonenumber"]:
             logger.error("no phonenumber")
@@ -192,12 +189,7 @@ async def get_dialogs():
         return jsonify(result), 200
 
     except BadRequest as error:
-        app.logger.exception(error)
         return str(error), 400
-
-    except InternalServerError as error:
-        app.logger.exception(error)
-        return "internal server error", 500
 
     except Exception as error:
         app.logger.exception(error)
@@ -205,6 +197,8 @@ async def get_dialogs():
 
 @app.route("/message", methods=["POST"])
 async def send_message():
+    """
+    """
     try:
         if not "phonenumber" in request.json or not request.json["phonenumber"]:
             logger.error("no phonenumber")
@@ -226,16 +220,10 @@ async def send_message():
         return "", 200
 
     except BadRequest as error:
-        app.logger.exception(error)
         return str(error), 400
 
     except UnprocessableEntity as error:
-        app.logger.exception(error)
         return "", 422
-
-    except InternalServerError as error:
-        app.logger.exception(error)
-        return "internal server error", 500
 
     except Exception as error:
         app.logger.exception(error)

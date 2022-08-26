@@ -1,30 +1,14 @@
 import logging
-import os
-import shutil
-import json
-import random
-import hashlib
-
-from telethon import TelegramClient
-from telethon.errors import (
-    PhoneNumberUnoccupiedError, 
-    PhoneCodeInvalidError, 
-    PhoneCodeExpiredError, 
-    SessionPasswordNeededError
-)
-from telethon.tl.types import InputPhoneContact
-from telethon import functions, types
-from configparser import ConfigParser
-from error import Forbidden, InternalServerError, Conflict, RegisterAccount, UnprocessableEntity
-
 logger = logging.getLogger(__name__)
 
-config_filepath = os.path.join(
-        os.path.dirname(__file__), '../configs', 'configs.ini')
+import os
+
+from configparser import ConfigParser
+config_filepath = os.path.join(os.path.dirname(__file__), 'configs', 'configs.ini')
 
 if not os.path.exists(config_filepath):
-    error = f"configs file not found at {config_filepath}"
-    raise Exception(error)
+    error = "configs file not found at %s" % config_filepath
+    raise FileNotFoundError(error)
 
 config = ConfigParser()
 config.read(config_filepath)
@@ -32,6 +16,44 @@ config.read(config_filepath)
 dev = config["DEV"]
 api_id = dev['API_ID']
 api_hash = dev['API_HASH']
+
+import os
+import shutil
+import json
+import random
+import hashlib
+
+from telethon import TelegramClient
+
+from telethon.errors import PhoneNumberUnoccupiedError
+from telethon.errors import PhoneCodeInvalidError
+from telethon.errors import PhoneCodeExpiredError
+from telethon.errors import SessionPasswordNeededError
+from telethon.errors import FloodWaitError
+
+from telethon.tl.types import InputPhoneContact
+from telethon import functions
+from telethon import types
+
+class RegisterAccountError(Exception):
+    def __init__(self, message="No account"):
+        self.message = message
+        super().__init__(self.message)
+
+class SessionExistError(Exception):
+    def __init__(self, message="Duplicate sessions"):
+        self.message = message
+        super().__init__(self.message)
+
+class InvalidCodeError(Exception):
+    def __init__(self, message="Invalid verification code"):
+        self.message = message
+        super().__init__(self.message)
+
+class TooManyRequests(Exception):
+    def __init__(self, message="Too many requests"):
+        self.message = message
+        super().__init__(self.message)
 
 def md5hash( data: str) -> str:
     """
@@ -49,8 +71,7 @@ class TelegramApp:
         self.phone_number = phone_number
 
         phone_number_hash = md5hash(data = phone_number)
-        self.record_filepath = os.path.join(
-                    os.path.dirname(__file__), '../records', phone_number_hash)
+        self.record_filepath = os.path.join(os.path.dirname(__file__), 'records', phone_number_hash)
 
     async def initialization(self) -> None:
         """
@@ -77,12 +98,16 @@ class TelegramApp:
                 logger.info("- authentication code sent to: %s", self.phone_number)
 
             else:
-                raise Conflict()
+                logger.error("Session already exist")
+                raise SessionExistError()
 
-        except Conflict:
-            raise Conflict()
+        except SessionExistError:
+            raise SessionExistError()
+        except FloodWaitError as error:
+            logger.error(error)
+            raise TooManyRequests()
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
 
         finally:
             # close telethon connection
@@ -108,7 +133,7 @@ class TelegramApp:
             return True
 
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
 
 
     def __read_registry__(self) -> None:
@@ -125,7 +150,7 @@ class TelegramApp:
             return json_object
 
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
     
 
     async def validation(self, code: str) -> dict:
@@ -163,20 +188,24 @@ class TelegramApp:
             }
 
         except PhoneNumberUnoccupiedError as error:
-            logger.error(f"{self.phone_number} has no account")
+            logger.error("%s has no account" % self.phone_number)
             self.__write_registry__(code=code, phone_code_hash=result["phone_code_hash"])
-            raise RegisterAccount()
+            raise RegisterAccountError()
         except PhoneCodeInvalidError as error:
             logger.error("The phone code entered was invalid")
-            raise Forbidden()
+            self.__write_registry__(phone_code_hash=result["phone_code_hash"])
+            raise InvalidCodeError()
         except PhoneCodeExpiredError as error:
             logger.error("The confirmation code has expired")
-            raise Forbidden()
+            raise InvalidCodeError()
         except SessionPasswordNeededError as error:
-            logger.error("wo-steps verification is enabled and a password is required")
-            raise InternalServerError(error)
+            logger.error("two-steps verification is enabled and a password is required")
+            raise error
+        except FloodWaitError as error:
+            logger.error(error)
+            raise TooManyRequests()
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
         finally:
             # close telethon connection
             logger.debug("closing connection ...")
@@ -232,32 +261,34 @@ class TelegramApp:
             await client.disconnect()
 
     async def revoke(self) -> bool:
+        """
+        """
         try:
             # initialize telethon client
             client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
             await client.connect()
 
             # revoke access
-            logger.debug(f"revoking {self.phone_number} access ...")
+            logger.debug("revoking %s access ..." % self.phone_number)
             await client.log_out()
 
-            """
             logger.debug("deleting deps ...")
-            shutil.rmtree(self.record_filepath + ".session")
-            """
+            shutil.rmtree(self.record_filepath)
 
             logger.info("- Successfully revoked access")
         
             return True
 
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
         finally:
             # close telethon connection
             logger.debug("closing connection ...")
             await client.disconnect()
 
     async def register(self, first_name: str, last_name: str) -> dict:
+        """
+        """
         try:
              # initialize telethon client
             client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
@@ -266,7 +297,7 @@ class TelegramApp:
             result = self.__read_registry__()
 
             # validate code
-            logger.debug(f"creating account for {self.phone_number} ...")
+            logger.debug("creating account for %s ..." % self.phone_number)
             await client.sign_up(code=result["code"], first_name=first_name, last_name=last_name, phone=f"{self.phone_number}", phone_code_hash=result["phone_code_hash"])
 
             logger.info("- Account successfully created")
@@ -288,12 +319,16 @@ class TelegramApp:
 
         except PhoneCodeInvalidError as error:
             logger.error("The phone code entered was invalid")
-            raise Forbidden()
+            self.__write_registry__(phone_code_hash=result["phone_code_hash"])
+            raise InvalidCodeError()
         except PhoneCodeExpiredError as error:
             logger.error("The confirmation code has expired")
-            raise Forbidden()
+            raise InvalidCodeError()
+        except FloodWaitError as error:
+            logger.error(error)
+            raise TooManyRequests()
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
         finally:
             # close telethon connection
             logger.debug("closing connection ...")
@@ -301,6 +336,8 @@ class TelegramApp:
 
 
     async def contacts(self) -> list:
+        """
+        """
         try:
             # initialize telethon client
             client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
@@ -309,7 +346,7 @@ class TelegramApp:
             # fetch telegram contacts
             contacts = []
             
-            logger.debug(f"Fetching telegram contacts for {self.phone_number} ...")
+            logger.debug("Fetching telegram contacts for %s ..." % self.phone_number)
             result = await client(functions.contacts.GetContactsRequest(hash=0))
             for user in result.users:
                 contacts.append({
@@ -325,13 +362,15 @@ class TelegramApp:
             return contacts
 
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
         finally:
             # close telethon connection
             logger.debug("closing connection ...")
             await client.disconnect()
 
     async def dialogs(self) -> list:
+        """
+        """
         try:
             # initialize telethon client
             client = TelegramClient(self.record_filepath, api_id=api_id, api_hash=api_hash)
@@ -340,7 +379,7 @@ class TelegramApp:
             # fetch all active dialogs
             dialogs = []
             
-            logger.debug(f"Fetching all active dialogs for {self.phone_number} ...")
+            logger.debug("Fetching all active dialogs for %s ..." % self.phone_number)
             result = await client.get_dialogs()        
             for dialog in result:
                 dialogs.append({
@@ -360,7 +399,7 @@ class TelegramApp:
             return dialogs
 
         except Exception as error:
-            raise InternalServerError(error)
+            raise error
         finally:
             # close telethon connection
             logger.debug("closing connection ...")

@@ -9,7 +9,7 @@ from os.path import abspath
 dir_path = os.path.dirname(abspath(getsourcefile(lambda:0)))
 sys.path.insert(0, dir_path)
 
-from src.telegram import TelegramApp
+from telegram_app import TelegramApp
 import asyncio
 logging.basicConfig(level='DEBUG')
 
