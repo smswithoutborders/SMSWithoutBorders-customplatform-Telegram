@@ -9,7 +9,7 @@ from os.path import abspath
 dir_path = os.path.dirname(abspath(getsourcefile(lambda:0)))
 sys.path.insert(0, dir_path)
 
-from telegram_app import TelegramApp
+from methods import Methods
 import asyncio
 logging.basicConfig(level='DEBUG')
 
@@ -21,7 +21,7 @@ async def run(body: str, user_details: dict)->None:
     message = ":".join(body[1:])
 
     try:
-        telegram = TelegramApp(phone_number=sender_phonenumber)
+        telegram = Methods(identifier=sender_phonenumber)
         await telegram.message(recipient=phonenumber, text=message)
     except Exception as error:
         logging.exception(error)

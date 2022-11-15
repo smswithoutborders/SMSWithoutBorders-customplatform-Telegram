@@ -20,7 +20,6 @@ api_hash = dev['API_HASH']
 import os
 import shutil
 import json
-import random
 import hashlib
 
 from telethon import TelegramClient
@@ -63,17 +62,17 @@ def md5hash( data: str) -> str:
     except Exception as error:
         raise error
 
-class TelegramApp:
+class Methods:
 
-    def __init__(self, phone_number) -> None:
+    def __init__(self, identifier) -> None:
         """
         """
-        self.phone_number = phone_number
+        self.phone_number = identifier
 
-        phone_number_hash = md5hash(data = phone_number)
+        phone_number_hash = md5hash(data = identifier)
         self.record_filepath = os.path.join(os.path.dirname(__file__), 'records', phone_number_hash)
 
-    async def initialization(self) -> None:
+    async def authorize(self) -> None:
         """
         """
         try:
@@ -153,7 +152,7 @@ class TelegramApp:
             raise error
     
 
-    async def validation(self, code: str) -> dict:
+    async def validate(self, code: str) -> dict:
         """
         """
         try:
@@ -263,7 +262,7 @@ class TelegramApp:
             logger.debug("closing connection ...")
             await client.disconnect()
 
-    async def revoke(self) -> bool:
+    async def invalidate(self) -> bool:
         """
         """
         try:

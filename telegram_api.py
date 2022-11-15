@@ -11,11 +11,11 @@ api = config["API"]
 from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import UnprocessableEntity
 
-from telegram_app import TelegramApp
-from telegram_app import RegisterAccountError
-from telegram_app import SessionExistError
-from telegram_app import InvalidCodeError
-from telegram_app import TooManyRequests
+from methods import Methods
+from methods import RegisterAccountError
+from methods import SessionExistError
+from methods import InvalidCodeError
+from methods import TooManyRequests
 
 from flask import Flask
 from flask import jsonify
@@ -34,8 +34,8 @@ async def start_session():
 
         phoneNumber = request.json["phonenumber"]
 
-        telegramApp = TelegramApp(phone_number = phoneNumber)
-        await telegramApp.initialization()
+        telegramApp = Methods(identifier = phoneNumber)
+        await telegramApp.authorize()
 
         return "", 201
 
@@ -68,8 +68,8 @@ async def validate_code():
         phoneNumber = request.json["phonenumber"]
         code = request.json["code"]
 
-        telegramApp = TelegramApp(phone_number = phoneNumber)
-        result = await telegramApp.validation(code=code)
+        telegramApp = Methods(identifier = phoneNumber)
+        result = await telegramApp.validate(code=code)
 
         return result['phone_number'], 200
 
@@ -108,7 +108,7 @@ async def register_account():
         firstName = request.json["first_name"]
         lastName = request.json["last_name"]
 
-        telegramApp = TelegramApp(phone_number = phoneNumber)
+        telegramApp = Methods(identifier = phoneNumber)
         result = await telegramApp.register(firstName, lastName)
 
         return result["phone_number"], 200
@@ -137,8 +137,8 @@ async def revoke_access():
 
         phoneNumber = request.json["phonenumber"]
 
-        telegramApp = TelegramApp(phone_number = phoneNumber)
-        await telegramApp.revoke()
+        telegramApp = Methods(identifier = phoneNumber)
+        await telegramApp.invalidate()
 
         return "", 200
 
@@ -160,7 +160,7 @@ async def get_contacts():
 
         phoneNumber = request.json["phonenumber"]
 
-        telegramApp = TelegramApp(phone_number = phoneNumber)
+        telegramApp = Methods(identifier = phoneNumber)
         result = await telegramApp.contacts()
 
         return jsonify(result), 200
@@ -183,7 +183,7 @@ async def get_dialogs():
 
         phoneNumber = request.json["phonenumber"]
 
-        telegramApp = TelegramApp(phone_number = phoneNumber)
+        telegramApp = Methods(identifier = phoneNumber)
         result = await telegramApp.dialogs()
 
         return jsonify(result), 200
@@ -214,7 +214,7 @@ async def send_message():
         recipient = request.json["recipient"]
         text = request.json["text"]
 
-        telegramApp = TelegramApp(phone_number = phoneNumber)
+        telegramApp = Methods(identifier = phoneNumber)
         await telegramApp.message(recipient, text)
 
         return "", 200

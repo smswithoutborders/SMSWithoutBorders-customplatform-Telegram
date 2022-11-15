@@ -1,0 +1,11 @@
+{
+    "name": "telegram",
+    "description": {
+        "en": "Telegram is a freeware, cross-platform, cloud-based instant messaging service. By storing access with us, you will be able to send messages by SMS using the SWOB app. We only request the most basic permissions to make this process work.",
+        "fr": "Telegram est un service de messagerie instantanée gratuit, multiplateforme et basé sur le cloud. En stockant un accès chez nous, vous serez en mesure d'envoyer des messages par SMS en utilisant l'application SWOB. Nous ne demandons que les autorisations les plus élémentaires pour que ce processus fonctionne."
+    },
+    "type": "messaging",
+    "logo": "/public/telegram-icon.svg",
+    "protocols": ["twofactor"],
+    "letter": "T"
+}
